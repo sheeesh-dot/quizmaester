@@ -14,8 +14,12 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'HackQuiz Arena - Round 1',
-  description: 'Secure team-based quiz platform for hackathon Round 1 qualification',
+  title: 'ASETech 2026 - Round 1 Quiz',
+  description: 'Team-based quiz platform for ASETech 2026 Round 1 qualification',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
