@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 interface StartTestProps {
   onStartTest: () => void
   teamId: string
+  teamName: string
 }
 
-export function StartTest({ onStartTest, teamId }: StartTestProps) {
+export function StartTest({ onStartTest, teamId, teamName }: StartTestProps) {
   const [isStarting, setIsStarting] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
@@ -25,7 +26,7 @@ export function StartTest({ onStartTest, teamId }: StartTestProps) {
     {
       icon: FileQuestion,
       title: "30 Questions",
-      description: "Split across 3 pages (10 each). No going back to previous pages.",
+      description: "You will get 30 questions across 3 pages (10 each). No going back to previous pages.",
     },
     {
       icon: Clock,
@@ -54,7 +55,7 @@ export function StartTest({ onStartTest, teamId }: StartTestProps) {
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">Ready to Begin?</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Team <span className="font-mono text-primary">{teamId}</span> - Please read the rules carefully
+              <span className="font-semibold text-primary">{teamName}</span> — Please read the rules carefully
             </p>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { submitSchema } from '@/lib/validate'
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = getClientIp(request.headers, request.ip ?? null)
+    const ip = getClientIp(request.headers, null)
     const rate = checkRateLimit('default', ip)
     if (!rate.success) {
       return NextResponse.json(
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const payload = verifyQuizToken(token)
+    const payload = await verifyQuizToken(token)
     if (!payload) {
       return NextResponse.json({ error: 'Quiz time expired' }, { status: 401 })
     }

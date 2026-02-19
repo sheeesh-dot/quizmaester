@@ -10,7 +10,7 @@ export const submitSchema = z.object({
     .array(
       z.object({
         question_id: z.string().uuid(),
-        selected_option: z.enum(['a', 'b', 'c', 'd']),
+        selected_option: z.enum(['A', 'B', 'C', 'D']),
       }),
     )
     .min(1),

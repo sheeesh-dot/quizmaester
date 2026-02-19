@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Shield, Eye, EyeOff, Loader2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,30 +8,78 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface LoginPageProps {
-  onLogin: () => void
+  onLogin: (teamId: string, teamName: string) => void
+}
+
+interface Team {
+  id: string
+  team_name: string
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
-  const [teamId, setTeamId] = useState("")
+  const [teams, setTeams] = useState<Team[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState("")
   const [secretCode, setSecretCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingTeams, setLoadingTeams] = useState(true)
   const [error, setError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch real team list from database on mount
+  useEffect(() => {
+    fetch("/api/teams")
+      .then((r) => r.json())
+      .then((data) => {
+        setTeams(data.teams || [])
+        setLoadingTeams(false)
+      })
+      .catch(() => {
+        setError("Failed to load teams. Please refresh.")
+        setLoadingTeams(false)
+      })
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!teamId.trim() || !secretCode.trim()) {
-      setError("Both fields are required.")
+    if (!selectedTeamId) {
+      setError("Please select your team.")
+      return
+    }
+    if (!secretCode.trim()) {
+      setError("Please enter your secret code.")
       return
     }
 
     setIsLoading(true)
-    setTimeout(() => {
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team_id: selectedTeamId,
+          secret_code: secretCode,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Invalid credentials. Please try again.")
+        setIsLoading(false)
+        return
+      }
+
+      // Pass real team ID and name up to parent
+      const selectedTeam = teams.find((t) => t.id === selectedTeamId)
+      onLogin(selectedTeamId, selectedTeam?.team_name || "")
+
+    } catch (err) {
+      setError("Network error. Please check your connection and try again.")
       setIsLoading(false)
-      onLogin()
-    }, 1500)
+    }
   }
 
   return (
@@ -63,21 +111,35 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+              {/* Team dropdown */}
               <div className="flex flex-col gap-2">
-                <Label htmlFor="team-id" className="text-sm font-medium text-foreground">
-                  Team ID
+                <Label htmlFor="team-select" className="text-sm font-medium text-foreground">
+                  Select Your Team
                 </Label>
-                <Input
-                  id="team-id"
-                  type="text"
-                  placeholder="e.g., T01"
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value.toUpperCase())}
-                  className="bg-secondary/50 border-border/50 text-foreground placeholder:text-muted-foreground/50 h-11 font-mono tracking-wider"
-                  autoComplete="off"
-                />
+                {loadingTeams ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm h-11">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading teams...
+                  </div>
+                ) : (
+                  <select
+                    id="team-select"
+                    value={selectedTeamId}
+                    onChange={(e) => setSelectedTeamId(e.target.value)}
+                    className="bg-secondary/50 border border-border/50 text-foreground h-11 rounded-md px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">-- Select your team --</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.team_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
+              {/* Password field */}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="secret-code" className="text-sm font-medium text-foreground">
                   Secret Access Code
@@ -112,7 +174,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || loadingTeams}
                 className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-sm transition-all"
               >
                 {isLoading ? (

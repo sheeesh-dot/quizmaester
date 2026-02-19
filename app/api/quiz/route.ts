@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-
 import { supabaseAdmin } from '@/lib/supabase'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { verifyQuizToken } from '@/lib/jwt'
@@ -15,7 +14,8 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const ip = getClientIp(request.headers, request.ip ?? null)
+    // Fix: remove request.ip
+    const ip = getClientIp(request.headers, null)
     const rate = checkRateLimit('default', ip)
     if (!rate.success) {
       return NextResponse.json(
@@ -29,13 +29,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const payload = verifyQuizToken(token)
-    if (!payload) {
+    // Fix: await the async verifyQuizToken
+    let payload
+    try {
+      payload = await verifyQuizToken(token)
+    } catch {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const teamId = payload.team_id
 
+    // Check if team already has assigned questions
     const { data: teamQuestions, error: tqError } = await supabaseAdmin
       .from('team_questions')
       .select('question_ids')
@@ -50,11 +54,13 @@ export async function GET(request: NextRequest) {
     let questionIds: string[]
 
     if (teamQuestions && Array.isArray(teamQuestions.question_ids)) {
+      // Reuse existing assigned questions
       questionIds = teamQuestions.question_ids as string[]
     } else {
+      // Randomly assign 10 questions from the pool
       const { data: allQuestions, error: questionsError } = await supabaseAdmin
         .from('questions')
-        .select('id, question_text, option_a, option_b, option_c, option_d')
+        .select('id')
 
       if (questionsError || !allQuestions || allQuestions.length === 0) {
         console.error('Error fetching questions', questionsError)
@@ -62,14 +68,12 @@ export async function GET(request: NextRequest) {
       }
 
       const shuffled = shuffleArray(allQuestions)
-      const selected = shuffled.slice(0, 10)
-
+      const selected = shuffled.slice(0, 30)
       questionIds = selected.map((q) => q.id as string)
 
-      const { error: insertError } = await supabaseAdmin.from('team_questions').insert({
-        team_id: teamId,
-        question_ids: questionIds,
-      })
+      const { error: insertError } = await supabaseAdmin
+        .from('team_questions')
+        .insert({ team_id: teamId, question_ids: questionIds })
 
       if (insertError) {
         console.error('Error inserting team_questions', insertError)
@@ -77,6 +81,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch full question data for assigned IDs
     const { data: questions, error: fetchError } = await supabaseAdmin
       .from('questions')
       .select('id, question_text, option_a, option_b, option_c, option_d')
@@ -87,25 +92,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch quiz' }, { status: 500 })
     }
 
-    const responseQuestions = questions.map((q) => {
-      const options = shuffleArray([
-        { key: 'a', text: q.option_a },
-        { key: 'b', text: q.option_b },
-        { key: 'c', text: q.option_c },
-        { key: 'd', text: q.option_d },
-      ])
+    // Return questions with flat option fields (no correct_option exposed)
+    // Shuffle question order for each team
+    const shuffledQuestions = shuffleArray(questions).map((q) => ({
+      id: q.id,
+      question_text: q.question_text,
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c,
+      option_d: q.option_d,
+    }))
 
-      return {
-        id: q.id,
-        question_text: q.question_text,
-        options,
-      }
-    })
+    return NextResponse.json({ questions: shuffledQuestions }, { status: 200 })
 
-    return NextResponse.json({ questions: responseQuestions }, { status: 200 })
   } catch (error) {
     console.error('Unexpected quiz error', error)
     return NextResponse.json({ error: 'Failed to fetch quiz' }, { status: 500 })
   }
 }
-

@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { LoginPage } from "@/components/login-page"
 import { StartTest } from "@/components/start-test"
@@ -11,22 +10,37 @@ type View = "login" | "startTest" | "quiz" | "leaderboard" | "admin"
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<View>("login")
+  const [teamId, setTeamId] = useState<string>("")
+  const [teamName, setTeamName] = useState<string>("")
 
   return (
     <>
       {currentView === "login" && (
-        <LoginPage onLogin={() => setCurrentView("startTest")} />
+        <LoginPage
+          onLogin={(id, name) => {
+            setTeamId(id)
+            setTeamName(name)
+            setCurrentView("startTest")
+          }}
+        />
       )}
       {currentView === "startTest" && (
-        <StartTest onStartTest={() => setCurrentView("quiz")} teamId="T01" />
+        <StartTest
+          onStartTest={() => setCurrentView("quiz")}
+          teamId={teamId}
+          teamName={teamName}
+        />
       )}
       {currentView === "quiz" && (
-        <QuizPage onSubmit={() => setCurrentView("leaderboard")} />
+        <QuizPage
+          onSubmit={() => setCurrentView("leaderboard")}
+          teamId={teamId}
+        />
       )}
       {currentView === "leaderboard" && (
         <LeaderboardPage
+          currentTeamId={teamId}
           onGoToAdmin={() => setCurrentView("admin")}
-          currentTeamId="T01"
         />
       )}
       {currentView === "admin" && (

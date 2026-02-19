@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Clock, ChevronRight, Send, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Clock, ChevronRight, Send, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -9,37 +9,78 @@ import { Badge } from "@/components/ui/badge"
 
 interface QuizPageProps {
   onSubmit: () => void
+  teamId: string
 }
 
-const SAMPLE_QUESTIONS = Array.from({ length: 30 }, (_, i) => ({
-  id: i + 1,
-  question_text: `Sample Question ${i + 1}: This is a placeholder question about hackathon concepts and programming fundamentals?`,
-  option_a: "Option A - First possible answer",
-  option_b: "Option B - Second possible answer",
-  option_c: "Option C - Third possible answer",
-  option_d: "Option D - Fourth possible answer",
-}))
+interface Question {
+  id: string
+  question_text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+}
 
-const TOTAL_TIME = 30 * 60 // 30 minutes in seconds
+const TOTAL_TIME = 30 * 60
 
-export function QuizPage({ onSubmit }: QuizPageProps) {
+export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
   const [currentPage, setCurrentPage] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME)
   const [mounted, setMounted] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
   const [savedIndicator, setSavedIndicator] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const onSubmitRef = useRef(onSubmit)
   onSubmitRef.current = onSubmit
 
   const questionsPerPage = 10
-  const totalPages = 3
+  const totalPages = Math.ceil(questions.length / questionsPerPage)
   const startIdx = currentPage * questionsPerPage
-  const endIdx = startIdx + questionsPerPage
-  const currentQuestions = SAMPLE_QUESTIONS.slice(startIdx, endIdx)
-
+  const currentQuestions = questions.slice(startIdx, startIdx + questionsPerPage)
   const answeredCount = Object.keys(answers).length
-  const progressPercent = (answeredCount / 30) * 100
+  const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0
+
+  // Fetch real questions from backend
+  useEffect(() => {
+    fetch("/api/quiz")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setLoadError(data.error)
+        } else {
+          setQuestions(data.questions || [])
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoadError("Failed to load questions. Please refresh.")
+        setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Countdown timer
+  useEffect(() => {
+    if (!mounted || loading) return
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          handleFinalSubmit()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [mounted, loading])
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -47,29 +88,31 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }, [])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onSubmitRef.current()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [mounted])
-
-  const selectAnswer = (questionId: number, option: string) => {
+  const selectAnswer = (questionId: string, option: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: option }))
     setSavedIndicator(true)
     setTimeout(() => setSavedIndicator(false), 1000)
+  }
+
+  const handleFinalSubmit = async () => {
+    setSubmitting(true)
+    try {
+      const formattedAnswers = Object.entries(answers).map(([question_id, selected_option]) => ({
+        question_id,
+        selected_option,
+      }))
+
+      const res = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: formattedAnswers }),
+      })
+
+      // Whether it succeeds or fails, move to leaderboard
+      onSubmitRef.current()
+    } catch {
+      onSubmitRef.current()
+    }
   }
 
   const handleNextPage = () => {
@@ -79,19 +122,38 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
     }
   }
 
-  const handleSubmit = () => {
-    setShowWarning(true)
-  }
-
-  const confirmSubmit = () => {
-    setShowWarning(false)
-    onSubmit()
-  }
-
-  const isTimeCritical = timeLeft <= 300 // 5 minutes
-  const isTimeUrgent = timeLeft <= 60 // 1 minute
-
+  const isTimeCritical = timeLeft <= 300
+  const isTimeUrgent = timeLeft <= 60
   const pageAnsweredCount = currentQuestions.filter((q) => answers[q.id]).length
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm">Loading your questions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <Card className="w-full max-w-sm border-destructive/30 bg-card">
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-3" />
+            <p className="text-sm text-destructive font-medium">{loadError}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4 w-full" variant="outline">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -99,26 +161,24 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            {/* Team & Progress */}
             <div className="flex items-center gap-3 min-w-0">
               <Badge variant="outline" className="shrink-0 font-mono text-xs border-primary/30 text-primary">
-                T01
+                {teamId ? teamId.slice(0, 8) + '...' : 'Loading...'}
               </Badge>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{answeredCount}</span>
                 <span>/</span>
-                <span>30</span>
+                <span>{questions.length}</span>
                 <span className="hidden sm:inline">answered</span>
               </div>
             </div>
 
-            {/* Timer */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-sm font-semibold transition-colors ${
                 isTimeUrgent
                   ? "bg-destructive/15 border-destructive/30 text-destructive animate-pulse"
                   : isTimeCritical
-                    ? "bg-warning/15 border-warning/30 text-warning"
+                    ? "bg-yellow-500/15 border-yellow-500/30 text-yellow-500"
                     : "bg-secondary/50 border-border/50 text-foreground"
               }`}
             >
@@ -126,7 +186,6 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
               {formatTime(timeLeft)}
             </div>
 
-            {/* Auto-save indicator */}
             {savedIndicator && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-primary animate-in fade-in">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -134,8 +193,6 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
               </div>
             )}
           </div>
-
-          {/* Progress bar */}
           <div className="mt-2.5">
             <Progress value={progressPercent} className="h-1.5 bg-secondary/50" />
           </div>
@@ -150,7 +207,7 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
               Page {currentPage + 1} of {totalPages}
             </h2>
             <span className="text-xs text-muted-foreground">
-              ({pageAnsweredCount}/{questionsPerPage} answered)
+              ({pageAnsweredCount}/{currentQuestions.length} answered)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -158,11 +215,7 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
               <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all ${
-                  i === currentPage
-                    ? "w-8 bg-primary"
-                    : i < currentPage
-                      ? "w-4 bg-primary/40"
-                      : "w-4 bg-secondary"
+                  i === currentPage ? "w-8 bg-primary" : i < currentPage ? "w-4 bg-primary/40" : "w-4 bg-secondary"
                 }`}
               />
             ))}
@@ -236,8 +289,8 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/30">
           <p className="text-xs text-muted-foreground">
-            {answeredCount < 30
-              ? `${30 - answeredCount} questions remaining`
+            {answeredCount < questions.length
+              ? `${questions.length - answeredCount} questions remaining`
               : "All questions answered"}
           </p>
           {currentPage < totalPages - 1 ? (
@@ -250,7 +303,8 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
             </Button>
           ) : (
             <Button
-              onClick={handleSubmit}
+              onClick={() => setShowWarning(true)}
+              disabled={submitting}
               className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2"
             >
               <Send className="w-4 h-4" />
@@ -266,14 +320,18 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
           <Card className="w-full max-w-sm border-border/50 bg-card shadow-2xl">
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-warning/15 flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-warning" />
+                <div className="w-12 h-12 rounded-full bg-yellow-500/15 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-yellow-500" />
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Submit Quiz?</h3>
                   <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                    You have answered <span className="font-semibold text-foreground">{answeredCount}/30</span> questions.
-                    {answeredCount < 30 && " Unanswered questions will be marked incorrect."}
+                    You have answered{" "}
+                    <span className="font-semibold text-foreground">
+                      {answeredCount}/{questions.length}
+                    </span>{" "}
+                    questions.
+                    {answeredCount < questions.length && " Unanswered questions will be marked incorrect."}
                     {" "}This action cannot be undone.
                   </p>
                 </div>
@@ -281,15 +339,27 @@ export function QuizPage({ onSubmit }: QuizPageProps) {
                   <Button
                     variant="outline"
                     onClick={() => setShowWarning(false)}
-                    className="flex-1 border-border/50 text-foreground"
+                    className="flex-1 border-border/50"
+                    disabled={submitting}
                   >
                     Cancel
                   </Button>
                   <Button
-                    onClick={confirmSubmit}
+                    onClick={() => {
+                      setShowWarning(false)
+                      handleFinalSubmit()
+                    }}
+                    disabled={submitting}
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                   >
-                    Confirm Submit
+                    {submitting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Submitting...
+                      </span>
+                    ) : (
+                      "Confirm Submit"
+                    )}
                   </Button>
                 </div>
               </div>

@@ -8,7 +8,7 @@ import { loginSchema } from '@/lib/validate'
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = getClientIp(request.headers, request.ip ?? null)
+    const ip = getClientIp(request.headers, null)
     const rate = checkRateLimit('login', ip)
     if (!rate.success) {
       return NextResponse.json(
@@ -45,16 +45,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    if (team.attempt_status === true) {
+    if (team.attempt_status === 'attempted') {
       return NextResponse.json({ error: 'Attempt already used' }, { status: 403 })
     }
 
     // Atomically claim the attempt using a conditional update to minimise race conditions.
     const { data: updatedTeam, error: updateError } = await supabaseAdmin
       .from('teams')
-      .update({ attempt_status: true })
+      .update({ attempt_status: 'attempted' })
       .eq('id', team_id)
-      .eq('attempt_status', false)
+      .eq('attempt_status', 'pending')
       .select('id')
       .maybeSingle()
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const token = signQuizToken(team_id, attempt.start_time)
+    const token = await signQuizToken({ team_id, start_time: attempt.start_time })
 
     const response = NextResponse.json({ success: true }, { status: 200 })
     response.cookies.set('quiz_token', token, {

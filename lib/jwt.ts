@@ -1,35 +1,28 @@
-import jwt from 'jsonwebtoken'
+import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is not set')
-}
+if (!JWT_SECRET) throw new Error('JWT_SECRET is not set in environment variables');
+
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 export interface QuizTokenPayload {
-  team_id: string
-  start_time: string
-  exp: number
+  team_id: string;
+  start_time: string;
 }
 
-export function signQuizToken(teamId: string, startTime: string): string {
-  const start = new Date(startTime)
-  const exp = Math.floor(start.getTime() / 1000) + 30 * 60
+export async function signQuizToken(payload: QuizTokenPayload): Promise<string> {
+  const startTime = new Date(payload.start_time);
+  const expiryTime = new Date(startTime.getTime() + 30 * 60 * 1000); // 30 min from start
 
-  const payload: QuizTokenPayload = {
-    team_id: teamId,
-    start_time: start.toISOString(),
-    exp,
-  }
-
-  return jwt.sign(payload, JWT_SECRET)
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime(expiryTime)
+    .setIssuedAt()
+    .sign(secret);
 }
 
-export function verifyQuizToken(token: string): QuizTokenPayload | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as QuizTokenPayload
-  } catch {
-    return null
-  }
+export async function verifyQuizToken(token: string): Promise<QuizTokenPayload> {
+  const { payload } = await jwtVerify(token, secret);
+  return payload as unknown as QuizTokenPayload;
 }
-
