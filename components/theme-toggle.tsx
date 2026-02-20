@@ -31,11 +31,10 @@ export function ThemeToggle() {
       <div
         style={{
           position: "fixed",
-          // On mobile: button is bottom-right, on desktop: top-right
-          // Use bottom for mobile, top for desktop via JS
-          bottom: "-60px",
-          right: "-60px",
-          top: "auto",
+          ...(typeof window !== "undefined" && window.innerWidth >= 768
+            ? { top: "-60px", right: "-60px", bottom: "auto" }   // desktop: top-right
+            : { bottom: "-60px", right: "-60px", top: "auto" }   // mobile: bottom-right
+          ),
           // Fixed px size so scale is predictable on all screen sizes
           width: "120px",
           height: "120px",
