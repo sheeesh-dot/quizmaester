@@ -31,25 +31,29 @@ export function ThemeToggle() {
       <div
         style={{
           position: "fixed",
-          top: "-5vw",
-          right: "-5vw",
-          width: "10vw",
-          height: "10vw",
+          top: "-60px",
+          right: "-60px",
+          // Fixed px size so scale is predictable on all screen sizes
+          width: "120px",
+          height: "120px",
           borderRadius: "50%",
-          // Target color = what we're transitioning TO
           background: isDark ? "oklch(0.92 0.018 80)" : "oklch(0.18 0.025 250)",
           zIndex: 9999,
           pointerEvents: "none",
-          // slow → fast → slow using cubic-bezier
+          // Scale calculated to always cover full screen diagonally
+          // diagonal of largest screen (4K) / half of circle size
+          // 120px circle, scale 25 = 3000px diameter — covers any screen
           transform: overlayPhase === "expanding"
-            ? "scale(30)"
+            ? "scale(25)"
             : "scale(0)",
+          transformOrigin: "center",
           transition: overlayPhase === "expanding"
-            ? "transform 0.7s cubic-bezier(0.37, 0, 0.63, 1)"
+            ? "transform 0.75s cubic-bezier(0.37, 0, 0.63, 1)"
             : overlayPhase === "collapsing"
-              ? "transform 0.55s cubic-bezier(0.37, 0, 0.63, 1)"
+              ? "transform 0.6s cubic-bezier(0.37, 0, 0.63, 1)"
               : "none",
           opacity: 1,
+          willChange: "transform",
         }}
       />
 
