@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function GET(request: NextRequest) {
   try {
-    const ip = getClientIp(request.headers, request.ip ?? null)
+    const ip = getClientIp(request.headers, null)
     const rate = checkRateLimit('default', ip)
     if (!rate.success) {
       return NextResponse.json(

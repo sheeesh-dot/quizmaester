@@ -19,6 +19,8 @@ interface Team {
 export function LoginPage({ onLogin }: LoginPageProps) {
   const [teams, setTeams] = useState<Team[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState("")
+  const [teamSearch, setTeamSearch] = useState("")
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [secretCode, setSecretCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -118,25 +120,58 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   Select Your Team
                 </Label>
                 {loadingTeams ? (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm h-11">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading teams...
-                  </div>
-                ) : (
-                  <select
-                    id="team-select"
-                    value={selectedTeamId}
-                    onChange={(e) => setSelectedTeamId(e.target.value)}
-                    className="bg-secondary/50 border border-border/50 text-foreground h-11 rounded-md px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
-                    <option value="">-- Select your team --</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.team_name}
-                      </option>
-                    ))}
-                  </select>
-                )}
+              <div className="flex items-center gap-2 text-muted-foreground text-sm h-11">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading teams...
+              </div>
+            ) : (
+            <div className="relative">
+              <Input
+              id="team-select"
+              type="text"
+              placeholder="Start typing your team name..."
+              value={teamSearch}
+              onChange={(e) => {
+              setTeamSearch(e.target.value)
+              setSelectedTeamId("")
+              setShowSuggestions(true)
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            className="bg-secondary/50 border-border/50 text-foreground h-11"
+            autoComplete="off"
+          />
+          {showSuggestions && teamSearch.length >= 3 && (
+          <div className="absolute z-50 w-full mt-1 bg-card border border-border/50 rounded-lg shadow-xl overflow-hidden">
+          {teams
+            .filter((t) =>
+            t.team_name.toLowerCase().includes(teamSearch.toLowerCase())
+          )
+          .map((team) => (
+            <button
+              key={team.id}
+              type="button"
+              onMouseDown={() => {
+                setSelectedTeamId(team.id)
+                setTeamSearch(team.team_name)
+                setShowSuggestions(false)
+              }}
+              className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-primary/10 transition-colors border-b border-border/20 last:border-0"
+            >
+              {team.team_name}
+            </button>
+          ))}
+        {teams.filter((t) =>
+          t.team_name.toLowerCase().includes(teamSearch.toLowerCase())
+          ).length === 0 && (
+          <div className="px-4 py-2.5 text-sm text-muted-foreground">
+            No team found
+          </div>
+          )}
+        </div>
+         )}
+        </div>
+        )}
               </div>
 
               {/* Password field */}
