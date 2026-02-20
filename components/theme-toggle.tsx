@@ -31,8 +31,11 @@ export function ThemeToggle() {
       <div
         style={{
           position: "fixed",
-          top: "-60px",
+          // On mobile: button is bottom-right, on desktop: top-right
+          // Use bottom for mobile, top for desktop via JS
+          bottom: "-60px",
           right: "-60px",
+          top: "auto",
           // Fixed px size so scale is predictable on all screen sizes
           width: "120px",
           height: "120px",
@@ -63,7 +66,9 @@ export function ThemeToggle() {
         disabled={isAnimating}
         aria-label="Toggle theme"
         className={`
-          fixed top-5 right-5 z-[9998]
+          fixed z-[9998]
+          bottom-6 right-5
+          md:bottom-auto md:top-5 md:right-5
           w-12 h-12 rounded-full
           flex items-center justify-center
           shadow-lg border transition-colors duration-300
