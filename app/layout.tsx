@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { GlobalAdminButton } from '@/components/global-admin-button'
 import './globals.css'
 
 const inter = Inter({
@@ -34,8 +35,9 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen bg-background text-foreground">
         <ThemeProvider>
           {children}
-        <ThemeToggle />
-        <Analytics />
+          <ThemeToggle />
+          <GlobalAdminButton />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

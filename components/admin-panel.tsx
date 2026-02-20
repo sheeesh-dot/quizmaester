@@ -117,7 +117,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
     setResetLoading(false)
   }
-
   // ── Login screen ──────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
@@ -266,7 +265,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             )}
           </CardContent>
         </Card>
-
         {/* Reset section */}
         <Card className="border-destructive/20 bg-destructive/5">
           <CardHeader className="pb-3">

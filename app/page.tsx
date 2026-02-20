@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { LoginPage } from "@/components/login-page"
 import { StartTest } from "@/components/start-test"
 import { QuizPage } from "@/components/quiz-page"
@@ -12,6 +12,20 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<View>("login")
   const [teamId, setTeamId] = useState<string>("")
   const [teamName, setTeamName] = useState<string>("")
+
+  useEffect(() => {
+    // Listen for gear icon click from any page
+    const handler = () => setCurrentView("admin")
+    window.addEventListener("openAdmin", handler)
+
+    // Also check sessionStorage in case event fired before listener was ready
+    if (sessionStorage.getItem("openAdmin") === "true") {
+      sessionStorage.removeItem("openAdmin")
+      setCurrentView("admin")
+    }
+
+    return () => window.removeEventListener("openAdmin", handler)
+  }, [])
 
   return (
     <>
