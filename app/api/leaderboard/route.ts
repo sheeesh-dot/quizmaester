@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-
 import { supabaseAdmin } from '@/lib/supabase'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -16,7 +15,14 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('attempts')
-      .select('score, total_correct, total_wrong, completion_time, teams ( team_name )')
+      .select(`
+        team_id,
+        score,
+        total_correct,
+        total_wrong,
+        completion_time,
+        teams ( team_name, round2_status )
+      `)
       .not('end_time', 'is', null)
       .order('score', { ascending: false })
       .order('completion_time', { ascending: true })
@@ -27,11 +33,13 @@ export async function GET(request: NextRequest) {
     }
 
     const leaderboard = data.map((row) => ({
+      team_id: row.team_id,
       team_name: (row as any).teams?.team_name,
       score: row.score,
       total_correct: row.total_correct,
       total_wrong: row.total_wrong,
       completion_time: row.completion_time,
+      round2_status: (row as any).teams?.round2_status ?? false,
     }))
 
     return NextResponse.json({ leaderboard }, { status: 200 })
@@ -40,4 +48,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
   }
 }
-

@@ -86,7 +86,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     })
     const data = await res.json()
     if (res.ok) {
-      setPromoteResult(`✅ Top ${topN} teams promoted to Round 2!`)
+      const promoted = data.promoted_team_ids?.length || 0
+      setPromoteResult(promoted > 0
+        ? `✅ ${promoted} teams promoted to Round 2!`
+        : `⚠️ No completed attempts found — teams must finish the quiz first!`)
       loadLeaderboard()
     } else {
       setPromoteResult(`❌ ${data.error || "Failed to promote"}`)
