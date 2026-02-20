@@ -34,6 +34,9 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
   const [showWarning, setShowWarning] = useState(false)
   const [savedIndicator, setSavedIndicator] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [violations, setViolations] = useState(0)
+  const [showWarningBanner, setShowWarningBanner] = useState(false)
+  const MAX_VIOLATIONS = 3
   const onSubmitRef = useRef(onSubmit)
   onSubmitRef.current = onSubmit
 
@@ -44,16 +47,13 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
   const answeredCount = Object.keys(answers).length
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0
 
-  // Fetch real questions from backend
+  // Fetch questions
   useEffect(() => {
     fetch("/api/quiz")
       .then((r) => r.json())
       .then((data) => {
-        if (data.error) {
-          setLoadError(data.error)
-        } else {
-          setQuestions(data.questions || [])
-        }
+        if (data.error) setLoadError(data.error)
+        else setQuestions(data.questions || [])
         setLoading(false)
       })
       .catch(() => {
@@ -82,6 +82,56 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
     return () => clearInterval(timer)
   }, [mounted, loading])
 
+  // Tab / app switch detection
+  useEffect(() => {
+    if (loading) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        setViolations((prev) => {
+          const next = prev + 1
+          fetch("/api/quiz/violation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "tab_switch", count: next }),
+          }).catch(() => {})
+          if (next >= MAX_VIOLATIONS) {
+            handleFinalSubmit()
+          } else {
+            setShowWarningBanner(true)
+            setTimeout(() => setShowWarningBanner(false), 4000)
+          }
+          return next
+        })
+      }
+    }
+
+    const handleWindowBlur = () => {
+      setViolations((prev) => {
+        const next = prev + 1
+        fetch("/api/quiz/violation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "window_blur", count: next }),
+        }).catch(() => {})
+        if (next >= MAX_VIOLATIONS) {
+          handleFinalSubmit()
+        } else {
+          setShowWarningBanner(true)
+          setTimeout(() => setShowWarningBanner(false), 4000)
+        }
+        return next
+      })
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("blur", handleWindowBlur)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("blur", handleWindowBlur)
+    }
+  }, [loading])
+
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -101,14 +151,11 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
         question_id,
         selected_option,
       }))
-
-      const res = await fetch("/api/submit", {
+      await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: formattedAnswers }),
       })
-
-      // Whether it succeeds or fails, move to leaderboard
       onSubmitRef.current()
     } catch {
       onSubmitRef.current()
@@ -157,14 +204,35 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
+
+      {/* Violation warning banner — fixed at top */}
+      {showWarningBanner && (
+        <div className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-3 bg-destructive px-4 py-3 animate-in slide-in-from-top duration-300">
+          <AlertTriangle className="w-5 h-5 text-white shrink-0" />
+          <p className="text-white text-sm font-semibold">
+            ⚠️ Tab switch detected! Warning {violations}/{MAX_VIOLATIONS}
+            {violations >= MAX_VIOLATIONS - 1
+              ? " — Next violation will AUTO-SUBMIT your quiz!"
+              : " — Your activity is being logged."}
+          </p>
+        </div>
+      )}
+
       {/* Sticky Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <Badge variant="outline" className="shrink-0 font-mono text-xs border-primary/30 text-primary">
-                {teamId ? teamId.slice(0, 8) + '...' : 'Loading...'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="shrink-0 font-mono text-xs border-primary/30 text-primary">
+                  {teamId ? teamId.slice(0, 8) + '...' : 'Loading...'}
+                </Badge>
+                {violations > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    ⚠️ {violations}/{MAX_VIOLATIONS} warnings
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{answeredCount}</span>
                 <span>/</span>
