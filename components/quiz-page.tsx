@@ -36,7 +36,7 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [violations, setViolations] = useState(0)
   const [showWarningBanner, setShowWarningBanner] = useState(false)
-  const MAX_VIOLATIONS = 3
+  const MAX_VIOLATIONS = 5
   const onSubmitRef = useRef(onSubmit)
   onSubmitRef.current = onSubmit
 
@@ -94,7 +94,7 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ type: "tab_switch", count: next }),
-          }).catch(() => {})
+          }).catch(() => { })
           if (next >= MAX_VIOLATIONS) {
             handleFinalSubmit()
           } else {
@@ -113,7 +113,7 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "window_blur", count: next }),
-        }).catch(() => {})
+        }).catch(() => { })
         if (next >= MAX_VIOLATIONS) {
           handleFinalSubmit()
         } else {
@@ -242,13 +242,12 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
             </div>
 
             <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-sm font-semibold transition-colors ${
-                isTimeUrgent
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-sm font-semibold transition-colors ${isTimeUrgent
                   ? "bg-destructive/15 border-destructive/30 text-destructive animate-pulse"
                   : isTimeCritical
                     ? "bg-yellow-500/15 border-yellow-500/30 text-yellow-500"
                     : "bg-secondary/50 border-border/50 text-foreground"
-              }`}
+                }`}
             >
               <Clock className="w-4 h-4" />
               {formatTime(timeLeft)}
@@ -282,9 +281,8 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
             {Array.from({ length: totalPages }, (_, i) => (
               <div
                 key={i}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === currentPage ? "w-8 bg-primary" : i < currentPage ? "w-4 bg-primary/40" : "w-4 bg-secondary"
-                }`}
+                className={`h-1.5 rounded-full transition-all ${i === currentPage ? "w-8 bg-primary" : i < currentPage ? "w-4 bg-primary/40" : "w-4 bg-secondary"
+                  }`}
               />
             ))}
           </div>
@@ -297,18 +295,16 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
           {currentQuestions.map((question, index) => (
             <Card
               key={question.id}
-              className={`border-border/40 bg-card/60 transition-all ${
-                answers[question.id] ? "border-primary/20" : ""
-              }`}
+              className={`border-border/40 bg-card/60 transition-all ${answers[question.id] ? "border-primary/20" : ""
+                }`}
             >
               <CardContent className="p-5">
                 <div className="flex items-start gap-3 mb-4">
                   <span
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold shrink-0 ${
-                      answers[question.id]
+                    className={`flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold shrink-0 ${answers[question.id]
                         ? "bg-primary/15 text-primary border border-primary/30"
                         : "bg-secondary text-muted-foreground border border-border/50"
-                    }`}
+                      }`}
                   >
                     {startIdx + index + 1}
                   </span>
@@ -329,18 +325,16 @@ export function QuizPage({ onSubmit, teamId }: QuizPageProps) {
                       <button
                         key={option.key}
                         onClick={() => selectAnswer(question.id, option.key)}
-                        className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-left text-sm transition-all ${
-                          isSelected
+                        className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-left text-sm transition-all ${isSelected
                             ? "bg-primary/10 border-primary/40 text-foreground ring-1 ring-primary/20"
                             : "bg-secondary/30 border-border/40 text-muted-foreground hover:bg-secondary/60 hover:text-foreground hover:border-border"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold shrink-0 ${
-                            isSelected
+                          className={`flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold shrink-0 ${isSelected
                               ? "bg-primary text-primary-foreground"
                               : "bg-secondary/80 text-muted-foreground border border-border/50"
-                          }`}
+                            }`}
                         >
                           {option.key}
                         </span>
