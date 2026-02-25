@@ -5,6 +5,7 @@ import { StartTest } from "@/components/start-test"
 import { QuizPage } from "@/components/quiz-page"
 import { LeaderboardPage } from "@/components/leaderboard-page"
 import { AdminPanel } from "@/components/admin-panel"
+import { GlobalAdminButton } from "@/components/global-admin-button"
 
 type View = "login" | "startTest" | "quiz" | "leaderboard" | "admin"
 
@@ -29,6 +30,7 @@ export default function Home() {
 
   return (
     <>
+      {currentView === "login" && <GlobalAdminButton />}
       {currentView === "login" && (
         <LoginPage
           onLogin={(id, name) => {

@@ -36,7 +36,6 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <ThemeToggle />
-          <GlobalAdminButton />
           <Analytics />
         </ThemeProvider>
       </body>
